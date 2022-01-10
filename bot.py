@@ -39,8 +39,8 @@ def handle_photo(message):
         bot.send_message(user_id, WAIT_MSG)
         orders.add(user_id)
         file_name = get_file(name=message.caption, pic=pic.file_id)
-        with open(file_name, 'rb') as data:
-            bot.send_document(user_id, data)
+        with open(file_name, "rb") as data:
+            bot.send_document(user_id, data, caption="Your order is ready")
 
         orders.remove(user_id)
 
@@ -50,7 +50,7 @@ def handle_text(message):
     user_id = message.from_user.id
 
     if user_id not in orders:
-        bot.send_message(message.from_user.id, "Please attach pic with required name")
+        bot.send_message(message.from_user.id, "Please attach pic with desired name")
     else:
         bot.send_message(user_id, WAIT_MSG)
 
