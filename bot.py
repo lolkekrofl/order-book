@@ -23,7 +23,7 @@ def get_file(name, pic):
 def add_to_queue(name, picture):
     # just template
     # call build queue, add name, pic to it, return generated name
-    return "/tmp/build.me"
+    return "/tmp/build.me"  # just debug name
 
 
 @bot.message_handler(content_types=['photo'])
