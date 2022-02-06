@@ -103,7 +103,7 @@ def handle_document(message):
 
         with open(local_file_name, "wb") as _file:
             _file.write(icon_file)
-        record["icon"] = local_file_name
+        record["file"] = local_file_name
 
 
 read_backup()
