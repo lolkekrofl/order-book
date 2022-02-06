@@ -1,4 +1,3 @@
-import os.path
 import time
 
 import telebot
@@ -7,14 +6,30 @@ import config
 WAIT_MSG = "Please wait finish of the build process.."
 FILE_SIZE_LIMIT = 2 ** 20
 PAUSE = 10
-SCENARIO = 'name', 'id', 'file', 'confirmation', 'waiting'
+SCENARIO = 'name', 'id', 'file', 'confirmation', 'waiting', 'backup'
 
 bot = telebot.TeleBot(config.TOKEN)
 orders = dict()
 
 
+def read_backup():
+    # todo: check database, read orders if possible
+    for record in db:
+        orders[record['user_id']] = order = dict()
+        order['name'] = record['name']
+        order['id'] = record['app_id']
+        order['file'] = record['icon_file']
+        order['stage'] = SCENARIO[5]
+
+
+def write_into_db(userid, name, app_id, icon_file):
+    pass # todo
+
+
 @bot.message_handler(content_types=['text'])
 def handle_text(message):
+    time_to_build = False
+
     user_id = message.from_user.id
 
     if user_id not in orders:   # hello stage
@@ -36,12 +51,28 @@ def handle_text(message):
         elif record['stage'] == SCENARIO[3]:    # confirmation
             if text.lower() in ('y', 'yes'):
                 bot.send_message(user_id, "Your order added to queue")
-                # todo: save base (use for recovery)
 
+                # only confirmation causes db update
+                write_into_db(user_id, record['name'], record['id'], record['file'])
+                time_to_build = True
                 record['stage'] = SCENARIO[4]   # waiting
             else:
                 del orders[user_id]
                 bot.send_message(user_id, "Your order cancelled.")
+        # SCENARIO[4] case means just one more message from non-patient user, ignore it
+        elif record['stage'] == SCENARIO[5]:     # backup - recovery mode
+            time_to_build = True
+            record['stage'] = SCENARIO[4]  # waiting
+
+    if time_to_build:
+        pass
+        # todo:
+        # while queue_non_empty: wait
+        # call build script
+        # while build not ready: wait
+        # remove order
+        # from queue
+        # send build to user
 
 
 @bot.message_handler(content_types=['document'])
@@ -67,4 +98,5 @@ def handle_document(message):
         #    bot.send_document(user_id, data, caption="Your order is ready")
 
 
+read_backup()
 bot.polling(none_stop=True, interval=0)
