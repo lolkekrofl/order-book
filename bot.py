@@ -1,4 +1,4 @@
-import time
+import os
 
 import telebot
 import config
@@ -6,8 +6,12 @@ import config
 WAIT_MSG = "Please wait finish of the build process.."
 FILE_SIZE_LIMIT = 2 ** 20
 PAUSE = 10
-SCENARIO = 'name', 'id', 'file', 'confirmation', 'waiting', 'backup'
+SCENARIO = 'name', 'id', 'file', 'confirmation', 'waiting', 'backup'    # name of the next step
+TEMP_DIR = "/tmp/ob"
+os.makedirs(TEMP_DIR, exist_ok=True)
 
+
+db = [] # todo: remove it
 bot = telebot.TeleBot(config.TOKEN)
 orders = dict()
 
@@ -94,8 +98,12 @@ def handle_document(message):
         bot.send_message(user_id, msg)
         record["stage"] = SCENARIO[3]
 
-        #with open(file_name, "rb") as data:
-        #    bot.send_document(user_id, data, caption="Your order is ready")
+        icon_file = bot.download_file(bot.get_file(document.file_id).file_path)
+        local_file_name = os.path.join(TEMP_DIR, '-'.join(("icon", str(user_id), document.file_name)))
+
+        with open(local_file_name, "wb") as _file:
+            _file.write(icon_file)
+        record["icon"] = local_file_name
 
 
 read_backup()
