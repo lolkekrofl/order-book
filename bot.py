@@ -6,7 +6,14 @@ import config
 WAIT_MSG = "Please wait finish of the build process.."
 FILE_SIZE_LIMIT = 2 ** 20
 PAUSE = 10
-SCENARIO = 'name', 'id', 'file', 'confirmation', 'waiting', 'backup'    # name of the next step
+SCENARIO = [
+        'name',
+        'id',
+        'file',
+        'confirmation',
+        'waiting',
+        'backup'
+        ]  # name of the next step
 TEMP_DIR = config.TEMP_DIR
 os.makedirs(TEMP_DIR, exist_ok=True)
 
