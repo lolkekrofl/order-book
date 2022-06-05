@@ -1,4 +1,5 @@
 import os
+import shutil
 import time
 import multiprocessing as mp
 
@@ -16,7 +17,7 @@ db = OrdersQueue(config.DB_FILE)
 
 
 def build_orders(db: OrdersQueue):
-    print(f'Starting build daemon')
+    print(f'Build daemon started')
     while True:
         args = ((o,
                  os.path.abspath(config.BUILD_SCRIPT),
@@ -25,6 +26,37 @@ def build_orders(db: OrdersQueue):
         with mp.Pool() as p:
             p.starmap(db.build_order, args)
 
+        time.sleep(1)
+
+
+def send_apks(db: OrdersQueue):
+    print('Send apk daemon started')
+    while True:
+        for order in db.get_orders(status='built'):
+            filepath = os.path.join(
+                config.TEMP_DIR,
+                str(order.userid),
+                'TMessagesProj',
+                'build', 'outputs', 'apk', 'afat', 'release', 'app.apk')
+            with open(filepath, 'rb') as apkfile:
+                bot.send_document(order.userid, apkfile,
+                                  visible_file_name=f'{order.appname}.apk')
+                print(f'Sending apk to {order.userid}')
+            order.status = 'completed'
+            db.update_order(order)
+        time.sleep(1)
+
+
+def clean_orders_queue(db):
+    print('Clean daemon started')
+    while True:
+        for order in db.get_orders():
+            if order.status in ['completed', 'canceled']:
+                print(f'Cleaning data for order {order}')
+                db.remove_order(order.userid)
+                build_dir = os.path.join(config.TEMP_DIR, str(order.userid))
+                if os.path.isdir(build_dir):
+                    shutil.rmtree(build_dir)
         time.sleep(1)
 
 
@@ -49,7 +81,9 @@ def cancel_order(message):
     if userid not in db.get_users():
         bot.reply_to(message, 'You have made no orders yet')
         return
-    db.remove_order(userid)
+    order = db.get_order(userid)
+    order.status = 'canceled'
+    db.update_order(order)
     bot.reply_to(message, 'Your order is canceled')
 
 
@@ -95,9 +129,8 @@ def customize_order(message):
 
     elif order.status == 'confirmation':
         if message.text.lower() not in ['y', 'yes']:
+            order.status = 'canceled'
             bot.send_message(userid, 'Your order is cancelled')
-            # TODO: remove cancelled and built orders in a separate async coroutine
-            db.remove_order(userid)
             return
         else:
             bot.send_message(userid, 'Your order is confirmed and queued for build')
@@ -112,5 +145,9 @@ def customize_order(message):
 
 if __name__ == '__main__':
     build_proc = mp.Process(target=build_orders, args=(db,))
+    send_proc = mp.Process(target=send_apks, args=(db,))
+    clean_proc = mp.Process(target=clean_orders_queue, args=(db,))
     build_proc.start()
+    send_proc.start()
+    clean_proc.start()
     bot.polling()
