@@ -15,7 +15,7 @@ db = OrdersQueue(DB_FILE)
 
 
 @bot.message_handler(content_types=['text', 'document'])
-def handle_input(message):
+def customize_order(message):
 
     userid = message.from_user.id
 
@@ -46,25 +46,26 @@ def handle_input(message):
             bot.send_message(userid, f"Your file is too big."
                                      f" Please send a file smaller than 1MB")
             return
-        # todo: download document.file_id and write it to disk
-        msg = f"Your order {order.appname}, ID={order.appname}" \
-              "\nPlease confirm it (yes/[no])"
-        bot.send_message(userid, msg)
         order.appicon = bot.download_file(
             bot.get_file(message.document.file_id).file_path
         )
-    elif order.status is None:
+        order.status = 'confirmation'
+        msg = f"Your order {order.appname}, ID={order.appid}" \
+              "\nPlease confirm it (yes/[no])"
+        bot.send_message(userid, msg)
+
+    elif order.status == 'confirmation':
         if message.text.lower() not in ['y', 'yes']:
             bot.send_message(userid, 'Your order is cancelled')
-            order.status = 'cancelled'
             # TODO: remove cancelled and built orders in a separate async coroutine
             db.remove_order(userid)
+            return
         else:
-            bot.send_message(userid, 'Your order is confirmed and queued for building')
+            bot.send_message(userid, 'Your order is confirmed and queued for build')
             order.status = 'queued'
-
     elif order.status == 'queued':
-        bot.send_message(userid, f'Your order {order} is awaiting build.')
+        bot.send_message(userid, f'Your order is awaiting build.\n'
+                                 f' If you want to cancel build please send /cancel')
         return
 
     db.update_order(order)
