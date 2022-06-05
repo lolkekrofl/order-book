@@ -67,11 +67,7 @@ def handle_input(message):
         bot.send_message(userid, f'Your order {order} is awaiting build.')
         return
 
-    db.update_order(userid,
-                    appname=order.appname,
-                    appid=order.appid,
-                    appicon=order.appicon,
-                    status=order.status)
+    db.update_order(order)
 
 
 if __name__ == '__main__':

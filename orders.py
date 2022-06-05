@@ -53,11 +53,8 @@ class OrdersQueue(object):
             cur.execute("insert into orders (userid) values (?)", (userid, ))
         con.close()
 
-    def update_order(self, userid,
-                     appname=None,
-                     appid=None,
-                     appicon=None,
-                     status=None):
+    def update_order(self, order):
+        userid = order.userid
         if userid not in self.get_users():
             raise ValueError(f"User #{userid} is not found")
 
@@ -69,10 +66,10 @@ class OrdersQueue(object):
             where userid = :userid
             """, {
                 'userid': userid,
-                'appname': appname,
-                'appid': appid,
-                'appicon': appicon,
-                'status': status
+                'appname': order.appname,
+                'appid': order.appid,
+                'appicon': order.appicon,
+                'status': order.status
             })
         con.close()
 
