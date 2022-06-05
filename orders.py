@@ -82,7 +82,7 @@ class OrdersQueue(object):
     def get_order(self, userid):
         with self.init_connection() as con:
             cur = con.cursor()
-            cur.execute('select * from orders where userid = ?', (userid,))
+            cur.execute("select * from orders where userid = ?", (userid,))
             record = cur.fetchone()
         con.close()
         return Order(*record)
