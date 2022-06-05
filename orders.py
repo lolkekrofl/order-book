@@ -110,18 +110,18 @@ class OrdersQueue(object):
             f.write(order.appicon)
         order.status = 'building'
         self.update_order(order)
-        result = subprocess.run(
+        subprocess.run(
             [cmd,
              str(order.userid),
              str(order.appid),
              order.appname,
              iconfile,
              ], cwd=cwd)
-        if result == 0:
+        if os.path.isfile(os.path.join(cwd, str(order.userid), 'done')):
             order.status = 'built'
             print(f'Build for userid {order.userid} successful')
         else:
-            order.status = 'build-failed'
+            order.status = 'failed'
             print(f'Build for userid {order.userid} failed')
         self.update_order(order)
 
