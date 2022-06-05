@@ -1,4 +1,7 @@
 import os
+import time
+import multiprocessing as mp
+
 import telebot
 
 import config
@@ -6,12 +9,48 @@ from orders import OrdersQueue
 
 WAIT_MSG = "Please wait finish of the build process.."
 FILE_SIZE_LIMIT = 2 ** 20
-TEMP_DIR = config.TEMP_DIR
-DB_FILE = config.DB_FILE
-os.makedirs(TEMP_DIR, exist_ok=True)
+os.makedirs(config.TEMP_DIR, exist_ok=True)
 
 bot = telebot.TeleBot(config.TOKEN)
-db = OrdersQueue(DB_FILE)
+db = OrdersQueue(config.DB_FILE)
+
+
+def build_orders(db: OrdersQueue):
+    print(f'Starting build daemon')
+    while True:
+        args = ((o,
+                 os.path.abspath(config.BUILD_SCRIPT),
+                 config.TEMP_DIR)
+                for o in db.get_orders(status='queued'))
+        with mp.Pool() as p:
+            p.starmap(db.build_order, args)
+
+        time.sleep(1)
+
+
+@bot.message_handler(commands=['status'])
+def get_order_status(message):
+    userid = message.from_user.id
+    if userid not in db.get_users():
+        bot.reply_to(message, 'You have made no orders yet')
+        return
+    order = db.get_order(userid)
+    status = 'customizing'
+    if order.status is not None:
+        status = order.status
+    bot.reply_to(message, f"""
+    {order.appname} ID {order.appid}: {status}
+    """)
+
+
+@bot.message_handler(commands=['cancel'])
+def cancel_order(message):
+    userid = message.from_user.id
+    if userid not in db.get_users():
+        bot.reply_to(message, 'You have made no orders yet')
+        return
+    db.remove_order(userid)
+    bot.reply_to(message, 'Your order is canceled')
 
 
 @bot.message_handler(content_types=['text', 'document'])
@@ -72,4 +111,6 @@ def customize_order(message):
 
 
 if __name__ == '__main__':
-    bot.polling(none_stop=True, interval=0)
+    build_proc = mp.Process(target=build_orders, args=(db,))
+    build_proc.start()
+    bot.polling()
