@@ -90,9 +90,14 @@ class OrdersQueue(object):
         con.close()
         return Order(*record)
 
-    def get_orders(self):
+    def get_orders(self, status='any'):
         for userid in self.get_users():
-            yield self.get_order(userid)
+            order = self.get_order(userid)
+            if status != 'any':
+                if order.status == status:
+                    yield order
+            else:
+                yield order
 
     def get_users(self):
         with self.init_connection() as con:
