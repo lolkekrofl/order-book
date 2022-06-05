@@ -105,8 +105,10 @@ class OrdersQueue(object):
 
     def build_order(self, order: Order, cmd: str, cwd: os.PathLike):
         print(f'Starting build for userid {order.userid}')
-        iconfile = f'{order.userid}-{order.appid}-icon'
-        with open(os.path.join(cwd, iconfile), 'wb') as f:
+        os.mkdir(os.path.join(cwd, str(order.userid)))
+        iconfile = os.path.join(cwd, str(order.userid),
+                                f'{order.userid}-{order.appid}-icon')
+        with open(iconfile, 'wb') as f:
             f.write(order.appicon)
         order.status = 'building'
         self.update_order(order)
