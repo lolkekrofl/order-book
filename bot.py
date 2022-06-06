@@ -59,6 +59,16 @@ def clean_orders_queue(db):
         time.sleep(1)
 
 
+@bot.message_handler(commands=['help'])
+def get_help(message):
+    bot.reply_to(message, """ 
+    Supported commands:
+    /status - get your order status
+    /cancel - cancel your order
+    /help - get this help
+    """)
+
+
 @bot.message_handler(commands=['status'])
 def get_order_status(message):
     userid = message.from_user.id
