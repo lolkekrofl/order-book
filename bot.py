@@ -2,6 +2,7 @@ import os
 import shutil
 import time
 import multiprocessing as mp
+from concurrent.futures import ThreadPoolExecutor
 
 import telebot
 
@@ -30,19 +31,23 @@ def build_orders(db: OrdersQueue):
 
 def send_apks(db: OrdersQueue):
     print('Send apk daemon started')
+
+    def send_apk(order):
+        filepath = os.path.join(
+            config.TEMP_DIR,
+            str(order.userid),
+            'TMessagesProj',
+            'build', 'outputs', 'apk', 'afat', 'release', 'app.apk')
+        with open(filepath, 'rb') as apkfile:
+            bot.send_document(order.userid, apkfile,
+                              visible_file_name=f'{order.appname}.apk')
+            print(f'Sending apk to {order.userid}')
+        order.status = 'completed'
+        db.update_order(order)
+
     while True:
-        for order in db.get_orders(status='built'):
-            filepath = os.path.join(
-                config.TEMP_DIR,
-                str(order.userid),
-                'TMessagesProj',
-                'build', 'outputs', 'apk', 'afat', 'release', 'app.apk')
-            with open(filepath, 'rb') as apkfile:
-                bot.send_document(order.userid, apkfile,
-                                  visible_file_name=f'{order.appname}.apk')
-                print(f'Sending apk to {order.userid}')
-            order.status = 'completed'
-            db.update_order(order)
+        with ThreadPoolExecutor() as executor:
+            executor.map(send_apk, db.get_orders(status='built'))
         time.sleep(1)
 
 
