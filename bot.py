@@ -8,7 +8,6 @@ import telebot
 import config
 from orders import OrdersQueue
 
-WAIT_MSG = "Please wait finish of the build process.."
 FILE_SIZE_LIMIT = 2 ** 20
 os.makedirs(config.TEMP_DIR, exist_ok=True)
 
