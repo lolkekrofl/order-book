@@ -142,7 +142,7 @@ def customize_appname(message):
 
 @bot.message_handler(content_types=['text'],
                      func=on_order_status('appid'))
-def customize_appname(message):
+def customize_appid(message):
     userid = message.from_user.id
     order = db.get_order(userid)
     appid_mask = re.compile(r"^\w{2,3}\.\w+\.\w+$")
