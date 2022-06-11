@@ -3,6 +3,7 @@ import shutil
 import time
 import multiprocessing as mp
 from concurrent.futures import ThreadPoolExecutor
+import re
 
 import telebot
 
@@ -13,7 +14,7 @@ FILE_SIZE_LIMIT = 2 ** 20
 os.makedirs(config.TEMP_DIR, exist_ok=True)
 
 bot = telebot.TeleBot(config.TOKEN)
-db = OrdersQueue(config.DB_FILE)
+db = OrdersQueue(os.path.join(config.TEMP_DIR, config.DB_FILE))
 
 
 def build_orders(db: OrdersQueue):
@@ -115,13 +116,15 @@ def customize_order(message):
     if order.appname is None:
         order.appname = message.text
         bot.send_message(userid, f'App name is "{order.appname}".\n'
-                                 f'Now please provide the numeric ID for the app')
+                                 f'Now please provide the app ID '
+                                 f'in the form {config.APPID_EXAMPLE}')
     elif order.appid is None:
-        try:
-            appid = int(message.text)
-        except ValueError:
-            bot.send_message(userid, 'Please provide a numeric value for the app ID')
+        appid_mask = re.compile(r"^\w{2,3}\.\w+\.\w+$")
+        if not appid_mask.fullmatch(message.text):
+            bot.send_message(userid, 'Invalid input.\n'
+                                     f'Example: {config.APPID_EXAMPLE}')
         else:
+            appid = message.text.lower()
             order.appid = appid
             bot.send_message(userid, f'App ID is {order.appid}.\n'
                                      f'Please send the icon for the app')

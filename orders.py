@@ -7,7 +7,7 @@ class Order(object):
     def __init__(self,
                  userid: int,
                  appname: str = None,
-                 appid: int = None,
+                 appid: str = None,
                  appicon: bytes = None,
                  status: str = None):
         self.userid = userid
@@ -19,6 +19,7 @@ class Order(object):
     def __repr__(self):
         return f'Order(####{str(self.userid)[-3:]},' \
                f' {self.appname}, {self.appid})'
+
 
 class OrdersQueue(object):
 
@@ -39,7 +40,7 @@ class OrdersQueue(object):
             cur.execute("""create table orders (
                     userid integer,
                     appname text,
-                    appid integer,
+                    appid text,
                     appicon blob,
                     status text
                     )""")
@@ -115,7 +116,7 @@ class OrdersQueue(object):
         subprocess.run(
             [cmd,
              str(order.userid),
-             str(order.appid),
+             order.appid,
              order.appname,
              iconfile,
              ], cwd=cwd)
@@ -137,7 +138,7 @@ if __name__ == '__main__':
     userid = 1
     db.record_user(userid)
     o = db.get_order(userid)
-    o.appid = 42
+    o.appid = 'com.test.app'
     o.appname = 'TestApp'
     db.update_order(o)
     print(list(db.get_orders()))
