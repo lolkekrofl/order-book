@@ -164,4 +164,4 @@ if __name__ == '__main__':
     build_proc.start()
     send_proc.start()
     clean_proc.start()
-    bot.polling()
+    bot.polling(non_stop=True)
