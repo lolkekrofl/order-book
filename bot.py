@@ -115,59 +115,99 @@ def cancel_order(message):
     bot.reply_to(message, 'Your order is canceled')
 
 
-@bot.message_handler(content_types=['text', 'document', 'photo'])
-def customize_order(message):
+def on_order_status(status: str):
+    """Return a filter function for handling
+    only orders with status `status`"""
+    def message_filter(message):
+        userid = message.from_user.id
+        if userid not in db.get_users():
+            return False
+        order = db.get_order(userid)
+        return order.status == status
+    return message_filter
 
+
+@bot.message_handler(content_types=['text'],
+                     func=on_order_status('appname'))
+def customize_appname(message):
     userid = message.from_user.id
+    order = db.get_order(userid)
+    order.appname = message.text
+    order.status = 'appid'
+    bot.reply_to(message, f'App name is "{order.appname}".\n'
+                          f'Now please provide the app ID '
+                          f'in the form {config.APPID_EXAMPLE}')
+    db.update_order(order)
 
-    if userid not in db.get_users():   # hello stage
+
+@bot.message_handler(content_types=['text'],
+                     func=on_order_status('appid'))
+def customize_appname(message):
+    userid = message.from_user.id
+    order = db.get_order(userid)
+    appid_mask = re.compile(r"^\w{2,3}\.\w+\.\w+$")
+    if not appid_mask.fullmatch(message.text):
+        bot.send_message(userid, 'Invalid input.\n'
+                                 f'Example: {config.APPID_EXAMPLE}')
+        return
+    appid = message.text.lower()
+    order.appid = appid
+    order.status = 'appicon'
+    bot.reply_to(message, f'App ID is {order.appid}.\n'
+                          f'Please send the icon for the app')
+    db.update_order(order)
+
+
+@bot.message_handler(content_types=['document'],
+                     func=on_order_status('appicon'))
+def customize_icon(message):
+    userid = message.from_user.id
+    order = db.get_order(userid)
+    if message.document.file_size > FILE_SIZE_LIMIT:
+        bot.send_message(userid, f"Your file is too big."
+                                 f" Please send a file smaller than 1MB")
+        return
+    order.appicon = bot.download_file(
+        bot.get_file(message.document.file_id).file_path
+    )
+    order.status = 'confirmation'
+    send_confirmation_request(bot, order)
+    db.update_order(order)
+
+
+@bot.message_handler(func=on_order_status('appicon'))
+def handle_non_document_icon(message):
+    bot.reply_to(message, 'Please send the app icon as a document')
+
+
+@bot.message_handler(content_types=['text'],
+                     func=on_order_status('confirmation'))
+def confirm_order(message):
+    userid = message.from_user.id
+    order = db.get_order(userid)
+    if message.text.lower() not in ['y', 'yes']:
+        order.status = 'canceled'
+        bot.send_message(userid, 'Your order is cancelled')
+    else:
+        bot.send_message(userid, 'Your order is confirmed and queued for build')
+        order.status = 'queued'
+    db.update_order(order)
+
+
+@bot.message_handler(content_types=['text'],
+                     func=on_order_status('queued'))
+def ask_to_wait_for_build(message):
+    userid = message.from_user.id
+    bot.send_message(userid, f'Your order is awaiting build.\n'
+                             f' If you want to cancel build please send /cancel')
+
+
+@bot.message_handler(content_types=['text', 'sticker'])
+def welcome_user(message):
+    userid = message.from_user.id
+    if userid not in db.get_users():
         db.record_user(userid)
         bot.send_message(userid, "Hello! Please give me name of the app")
-        return
-    order = db.get_order(userid)
-
-    if order.appname is None:
-        order.appname = message.text
-        bot.send_message(userid, f'App name is "{order.appname}".\n'
-                                 f'Now please provide the app ID '
-                                 f'in the form {config.APPID_EXAMPLE}')
-    elif order.appid is None:
-        appid_mask = re.compile(r"^\w{2,3}\.\w+\.\w+$")
-        if not appid_mask.fullmatch(message.text):
-            bot.send_message(userid, 'Invalid input.\n'
-                                     f'Example: {config.APPID_EXAMPLE}')
-        else:
-            appid = message.text.lower()
-            order.appid = appid
-            bot.send_message(userid, f'App ID is {order.appid}.\n'
-                                     f'Please send the icon for the app')
-    elif order.appicon is None:
-        if message.document is None:
-            bot.send_message(userid, 'Please send the app icon as a document')
-            return
-        if message.document.file_size > FILE_SIZE_LIMIT:
-            bot.send_message(userid, f"Your file is too big."
-                                     f" Please send a file smaller than 1MB")
-            return
-        order.appicon = bot.download_file(
-            bot.get_file(message.document.file_id).file_path
-        )
-        order.status = 'confirmation'
-        send_confirmation_request(bot, order)
-
-    elif order.status == 'confirmation':
-        if message.text.lower() not in ['y', 'yes']:
-            order.status = 'canceled'
-            bot.send_message(userid, 'Your order is cancelled')
-        else:
-            bot.send_message(userid, 'Your order is confirmed and queued for build')
-            order.status = 'queued'
-    elif order.status == 'queued':
-        bot.send_message(userid, f'Your order is awaiting build.\n'
-                                 f' If you want to cancel build please send /cancel')
-        return
-
-    db.update_order(order)
 
 
 if __name__ == '__main__':

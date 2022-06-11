@@ -49,7 +49,8 @@ class OrdersQueue(object):
     def record_user(self, userid):
         with self.init_connection() as con:
             cur = con.cursor()
-            cur.execute("insert into orders (userid) values (?)", (userid, ))
+            cur.execute("insert into orders (userid, status) values (?, ?)",
+                        (userid, 'appname'))
         con.close()
 
     def update_order(self, order):
