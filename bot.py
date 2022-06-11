@@ -115,7 +115,7 @@ def cancel_order(message):
     bot.reply_to(message, 'Your order is canceled')
 
 
-@bot.message_handler(content_types=['text', 'document'])
+@bot.message_handler(content_types=['text', 'document', 'photo'])
 def customize_order(message):
 
     userid = message.from_user.id
