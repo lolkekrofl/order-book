@@ -6,6 +6,7 @@ from concurrent.futures import ThreadPoolExecutor
 import re
 
 import telebot
+from telebot import types
 
 import config
 from orders import OrdersQueue
@@ -63,6 +64,18 @@ def clean_orders_queue(db):
                 if os.path.isdir(build_dir):
                     shutil.rmtree(build_dir)
         time.sleep(1)
+
+
+def send_confirmation_request(bot, order):
+    msg = f"Your order {order.appname}, ID={order.appid}" \
+          "\nPlease confirm it:"
+    markup = types.ReplyKeyboardMarkup(row_width=2,
+                                       selective=True,
+                                       one_time_keyboard=True)
+    yesbutton = types.KeyboardButton('Yes')
+    nobutton = types.KeyboardButton('No')
+    markup.add(yesbutton, nobutton)
+    bot.send_message(order.userid, msg, reply_markup=markup)
 
 
 @bot.message_handler(commands=['help'])
@@ -140,15 +153,12 @@ def customize_order(message):
             bot.get_file(message.document.file_id).file_path
         )
         order.status = 'confirmation'
-        msg = f"Your order {order.appname}, ID={order.appid}" \
-              "\nPlease confirm it (yes/[no])"
-        bot.send_message(userid, msg)
+        send_confirmation_request(bot, order)
 
     elif order.status == 'confirmation':
         if message.text.lower() not in ['y', 'yes']:
             order.status = 'canceled'
             bot.send_message(userid, 'Your order is cancelled')
-            return
         else:
             bot.send_message(userid, 'Your order is confirmed and queued for build')
             order.status = 'queued'
